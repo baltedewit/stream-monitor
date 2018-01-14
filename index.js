@@ -3,7 +3,7 @@ const Slack = require('slack-node');
 const email = require('emailjs');
 const config = requite('./config.json')
  
-const WEBHOOK = "https://hooks.slack.com/services/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";
+const WEBHOOK = config.webhook;
 const STREAM = "http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=rrIMh6YQSxQW/rrIMh6YQSxQW.m3u8";
  
 const slack = new Slack();
