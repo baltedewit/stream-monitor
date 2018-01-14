@@ -1,0 +1,18 @@
+ffmpeg -re -i http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8 -filter:v "select='gt(scene,0.05)',showinfo" -f null /dev/null
+
+ffmpeg -re -i http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8 -af "silencedetect=n=-112dB:d=0.1" -f null /dev/null
+
+ffmpeg -re -i http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8 -f nut - | ffplay 
+
+ffmpeg -nostats -i -re -i http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8 -filter_complex ebur128 -f null -
+
+schagenfm (low quality) : http://media.streamone.net/hlslive/account=gaJJHsMZBIcy/livestream=6YRNGsaSSsYW/6YRNGsaSSsYW.m3u8
+slogo (high quality): http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8
+slogo (low quality): http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=rrIMh6YQSxQW/rrIMh6YQSxQW.m3u8
+
+
+full pipe:
+~/Documents/ffmpeg-3.4.1/ffmpeg -nostats -i http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8 -af loudnorm=I=-23:TP=-3:LRA=6 -ar 48k -c:v rawvideo -f nut - | ffmpeg -nostats -i - -filter_complex ebur128=peak=true -c:v rawvideo -f nut - | ffplay -
+
+ffmpeg -re -i http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=v6IEh8-CC9YW/v6IEh8-CC9YW.m3u8 -filter:v "select='gt(scene,0.05)',showinfo" -c:v rawvideo -c:a pcm_s32le -f nut - | ffplay -
+
