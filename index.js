@@ -21,13 +21,15 @@ const state = {
     connected: 0
 }
 
+const frameHistory = [];
+
 /**
  * Set up command & start ffmpeg.
  */
 let cmd = new ffmpeg(config.stream)
     .native()
     .complexFilter('ebur128=peak=true')
-    .videoFilter("select='gt(scene,0.1)',showinfo")
+    .videoFilter("select='gt(scene,0)',showinfo")
     .format('null')
     .output('-');
 
@@ -40,12 +42,16 @@ cmd.on('stderr', (line) => {
     if (segments[0].indexOf('[Parsed_ebur128') == 0) {
         parseEbuMessage(segments);
     } else if (segments[0].indexOf('[Parsed_showinfo_1') == 0) {
-        handleSceneChangeMessage(segments);
+        parseSceneChangeMessage(segments);
     }
 });
 
 cmd.run();
 
+/**
+ * Parses messages with segments of ebu ffmpeg info and passes these to a handler.
+ * @param {Array<String>} segments 
+ */
 function parseEbuMessage(segments) {
     let data = [];
     let object = {};
@@ -102,6 +108,43 @@ function parseEbuMessage(segments) {
     handleEbuMessage(object);
 }
 
+/**
+ * Parses messages with segments of ffmpeg scene change information and passes these
+ * on to a handler.
+ * Incoming segements have the following information:
+ *      n:      number of the scene change
+ *      pts:
+ *      pos:
+ *      fmt:    pixel format
+ *      sar:    square pixel aspect ratio
+ *      s:      size
+ *      i:      interlaced?
+ *      iskey:  is keyframe?
+ *      type:   I, P, B
+ *      checksum:
+ *      plane_checksum
+ *      mean:   
+ *      stdev:  standard deviation
+ * @param {Array<String>} segments 
+ */
+function parseSceneChangeMessage(segments) {
+    const obj = {};
+
+    for (let segment of segments) {
+        if (segment.indexOf('stdev') == 0) {
+            obj.stdev = Number(segment.substr(7));
+        } else if (segment.indexOf('mean') == 0) {
+            obj.mean = Number(segment.substr(6));
+        }
+    }
+
+    if (obj.stdev && obj.mean)
+        handleSceneChangeMessage(obj);
+}
+
+/**
+ * Resets the state regarding sent silence warnings, and logs to slack.
+ */
 function resetSilenceWarning() {
     state.silenceWarningSent = false;
 
@@ -114,13 +157,29 @@ function resetSilenceWarning() {
       });
 }
 
-function handleSceneChangeMessage(segments) {
-    state.staticImageWarningSent = false;
-    state.lastVideoFrame = new Date();
+/**
+ * handles js objects with ffmpeg scene change info.
+ * specifically: maintains an array with stdev and mean info.
+ * @param {Object} object 
+ */
+function handleSceneChangeMessage(object) {
+    // state.staticImageWarningSent = false;
+    // state.lastVideoFrame = new Date();
+
+    frameHistory.push(object);
+    if (frameHistory.length > 10) {
+        frameHistory.splice(0, 1);
+    }
 }
 
+/**
+ * Handles javascript objects with ffmpeg ebu info.
+ * Specifically, checks if the frame's true peak is higher than the level in the 
+ * config, and if so, it sets the state.
+ * @param {Object} object 
+ */
 function handleEbuMessage(object) {
-    if (object.frameTPK[0] > config.dBFS) { // true peak in dbFS
+    if (object.frameTPK[0] > config.dBFS) {
         if (state.silenceWarningSent) {
             resetSilenceWarning();
         }
@@ -128,10 +187,36 @@ function handleEbuMessage(object) {
     }
 }
 
+function calculateMotion() {
+    if (frameHistory.length == 0)
+        return;
+
+    let stdev = [frameHistory[0].stdev, frameHistory[0].stdev];
+    let mean = [frameHistory[0].mean, frameHistory[0].mean];
+
+    for (let frame of frameHistory) {
+        if (frame.stdev < stdev[0])
+            stdev[0] = frame.stdev;
+        if (frame.stdev > stdev[1])
+            stdev[1] = frame.stdev;
+        
+        if (frame.mean < mean[0])
+            mean[0] = frame.mean;
+        if (frame.mean > mean[1])
+            mean[1] = frame.mean;
+    }
+    
+    if (stdev[1]-stdev[0] > 0.01 || mean[1]-mean[0] > 4)
+        state.staticImageWarningSent = false;
+        state.lastVideoFrame = new Date();
+}
+
 // run checks every second
 setInterval(function () {
     if (!state.connected)
         return;
+
+    calculateMotion();
 
     if (!state.silenceWarningSent && new Date() - state.lastAudioFrame > config.audioTimeout*1000) { // silence for 30 seconds
         state.silenceWarningSent = true;
