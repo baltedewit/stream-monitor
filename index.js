@@ -28,6 +28,7 @@ const frameHistory = [];
  */
 let cmd = new ffmpeg(config.stream)
     .native()
+    .outputOptions(config.mappings)
     .complexFilter('ebur128=peak=true')
     .videoFilter("select='gt(scene,0)',showinfo")
     .format('null')
@@ -38,6 +39,7 @@ cmd.on('start', (cmdLine) => {
 });
 
 cmd.on('stderr', (line) => {
+    console.log(line);
     let segments = line.split(' ');
     if (segments[0].indexOf('[Parsed_ebur128') == 0) {
         parseEbuMessage(segments);

@@ -5,6 +5,7 @@
     "webhook": "https://hooks.slack.com/services/YOUR/KEYS",
     
     "stream": "[VALID FFMPEG INPUT]",
+    "mappings": ["-map 0:0", "-map 0:1"],
     "dBFS": -70,
     "audioTimeout": 30,
     "videoTimeout": 30
