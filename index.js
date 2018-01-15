@@ -1,13 +1,10 @@
 const ffmpeg = require('fluent-ffmpeg');
 const Slack = require('slack-node');
 const email = require('emailjs');
-const config = requite('./config.json')
- 
-const WEBHOOK = config.webhook;
-const STREAM = "http://media.streamone.net/hlslive/account=gCRIPoIbRB0W/livestream=rrIMh6YQSxQW/rrIMh6YQSxQW.m3u8";
+const config = require('./config.json');
  
 const slack = new Slack();
-slack.setWebhook(WEBHOOK);
+slack.setWebhook(config.webhook);
 
 const emailServer = email.server.connect({
     user: config.user,
@@ -24,12 +21,14 @@ const state = {
     connected: 0
 }
 
-let cmd = new ffmpeg(STREAM)
+/**
+ * Set up command & start ffmpeg.
+ */
+let cmd = new ffmpeg(config.stream)
     .native()
     .complexFilter('ebur128=peak=true')
     .videoFilter("select='gt(scene,0.1)',showinfo")
     .format('null')
-    // .outputFPS(1)
     .output('-');
 
 cmd.on('start', (cmdLine) => {
@@ -121,7 +120,7 @@ function handleSceneChangeMessage(segments) {
 }
 
 function handleEbuMessage(object) {
-    if (object.frameTPK[0] > -70) { // true peak in dbFS
+    if (object.frameTPK[0] > config.dBFS) { // true peak in dbFS
         if (state.silenceWarningSent) {
             resetSilenceWarning();
         }
@@ -134,7 +133,7 @@ setInterval(function () {
     if (!state.connected)
         return;
 
-    if (!state.silenceWarningSent && new Date() - state.lastAudioFrame > 30*1000) { // silence for 30 seconds
+    if (!state.silenceWarningSent && new Date() - state.lastAudioFrame > config.audioTimeout*1000) { // silence for 30 seconds
         state.silenceWarningSent = true;
  
         slack.webhook({
@@ -156,16 +155,16 @@ setInterval(function () {
         console.log('Silence Warning!')
     }
 
-    if (!state.staticImageWarningSent && new Date() - state.lastVideoFrame > 30*1000) { // static image for 30 seconds
+    if (!state.staticImageWarningSent && new Date() - state.lastVideoFrame > config.videoTimeout*1000) { // static image for 30 seconds
         state.staticImageWarningSent = true;
 
         slack.webhook({
             channel: "#techniek",
             username: "Stream Watcher",
             text: "Static Image has been detected on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString()
-          }, function () {
-              //
-          });
+        }, function () {
+            //
+        });
         
         emailServer.send({
             text:    "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo heeft sinds "+state.lastVideoFrame.toLocaleTimeString()+" geen verandering van beeld gehad. \n\nU ontvangt hiervan geen melding meer totdat het beeld wordt hervat.", 

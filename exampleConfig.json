@@ -1,0 +1,11 @@
+{
+    "user": "email@example",
+    "password": "[PASSWORD]",
+    "host": "[MAIL SERVER]",
+    "webhook": "https://hooks.slack.com/services/YOUR/KEYS",
+    
+    "stream": "[VALID FFMPEG INPUT]",
+    "dBFS": -70,
+    "audioTimeout": 30,
+    "videoTimeout": 30
+}
