@@ -154,9 +154,37 @@ function resetSilenceWarning() {
         channel: "#techniek",
         username: "Stream Watcher",
         text: "Audio resumed on RTV Slogo at "+new Date().toLocaleTimeString()
-      }, function () {
+    }, function () {
           //
-      });
+    });
+
+    emailServer.send({
+        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+Date.new().toLocaleTimeString()+" herstart met het uitzenden van geluid.", 
+        from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
+        to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
+        bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
+        subject: "[STREAM MONITOR] Opheffing stilte alarm voor RTV Slogo"
+    }, function(err, message) { console.log(err || message); });
+}
+
+function resetStaticImageWarning() {
+    state.staticImageWarningSent = false;
+
+    slack.webhook({
+        channel: "#techniek",
+        username: "Stream Watcher",
+        text: "Video resumed on RTV Slogo at "+new Date().toLocaleTimeString()
+    }, function () {
+          //
+    });
+
+    emailServer.send({
+        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+Date.new().toLocaleTimeString()+" herstart met het uitzenden van beeld.", 
+        from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
+        to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
+        bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
+        subject: "[STREAM MONITOR] Statisch beeld alarm voor RTV Slogo"
+    }, function(err, message) { console.log(err || message); });
 }
 
 /**
@@ -214,7 +242,8 @@ function calculateMotion() {
     }
     
     if (stdev[1]-stdev[0] > 0.01 || mean[1]-mean[0] > 4)
-        state.staticImageWarningSent = false;
+        if (state.staticImageWarningSent)
+            resetStaticImageWarning();
         state.lastVideoFrame = new Date();
 }
 
