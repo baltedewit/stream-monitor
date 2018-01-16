@@ -39,7 +39,6 @@ cmd.on('start', (cmdLine) => {
 });
 
 cmd.on('stderr', (line) => {
-    console.log(line);
     let segments = line.split(' ');
     if (segments[0].indexOf('[Parsed_ebur128') == 0) {
         parseEbuMessage(segments);
@@ -179,7 +178,7 @@ function resetStaticImageWarning() {
     });
 
     emailServer.send({
-        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+Date.new().toLocaleTimeString()+" herstart met het uitzenden van beeld.", 
+        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+new Date().toLocaleTimeString()+" herstart met het uitzenden van beeld.", 
         from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
         to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
         bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
