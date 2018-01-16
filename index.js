@@ -189,6 +189,11 @@ function handleEbuMessage(object) {
     }
 }
 
+/**
+ * Calculates the delta in motion measured by ffmpeg over the last
+ * 10 measurements. Then decides whether motion was enough to consider
+ * a non-static video frame.
+ */
 function calculateMotion() {
     if (frameHistory.length == 0)
         return;
@@ -235,7 +240,7 @@ setInterval(function () {
             text:    "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo is sinds "+state.lastAudioFrame.toLocaleTimeString()+" stil geweest. \n\nU ontvangt hiervan geen melding meer totdat het geluid wordt hervat.", 
             from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
             to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
-            // bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
+            bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
             subject: "[STREAM MONITOR] Stilte alarm voor RTV Slogo!"
          }, function(err, message) { console.log(err || message); });
 
@@ -257,7 +262,7 @@ setInterval(function () {
             text:    "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo heeft sinds "+state.lastVideoFrame.toLocaleTimeString()+" geen verandering van beeld gehad. \n\nU ontvangt hiervan geen melding meer totdat het beeld wordt hervat.", 
             from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
             to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
-            // bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
+            bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
             subject: "[STREAM MONITOR] Statisch beeld alarm voor RTV Slogo!"
          }, function(err, message) { console.log(err || message); });
 
