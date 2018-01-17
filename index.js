@@ -158,7 +158,7 @@ function resetSilenceWarning() {
     });
 
     emailServer.send({
-        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+Date.new().toLocaleTimeString()+" herstart met het uitzenden van geluid.", 
+        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+new Date().toLocaleTimeString()+" herstart met het uitzenden van geluid.", 
         from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
         to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
         bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
