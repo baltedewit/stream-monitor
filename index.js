@@ -1,53 +1,72 @@
-const ffmpeg = require('fluent-ffmpeg');
-const Slack = require('slack-node');
-const email = require('emailjs');
 const config = require('./config.json');
- 
-const slack = new Slack();
-slack.setWebhook(config.webhook);
-
-const emailServer = email.server.connect({
-    user: config.user,
-    password: config.password,
-    host: config.host,
-    ssl: true
-});
+const warnings = require('./warnings.js');
+const FfmpegInstance = require('./ffmpeg.js');
 
 const state = {
     lastAudioFrame: new Date(),
     silenceWarningSent: false,
     lastVideoFrame: new Date(),
     staticImageWarningSent: false,
-    connected: 0
+    connected: 0,
+    errored: false,
+    errorTime: 0
 }
 
 const frameHistory = [];
 
-/**
- * Set up command & start ffmpeg.
- */
-let cmd = new ffmpeg(config.stream)
-    .native()
-    .outputOptions(config.mappings)
-    .complexFilter('ebur128=peak=true')
-    .videoFilter("select='gt(scene,0)',showinfo")
-    .format('null')
-    .output('-');
+const ffmpegConfig = {
+    stream: config.stream,
+    mappings: config.mappings,
+    start: function (cmdLine) {
+        // wait 1s for error handler
+        setTimeout(() => {
+            // prevent warning in case error happened too recently.
+            if (new Date() - state.errorTime < 5000)
+                return;
 
-cmd.on('start', (cmdLine) => {
-    console.log('started with ' + cmdLine);
-});
+            console.log('Started ffmpeg with ' + cmdLine);
+            warnings.slackMessage("Stream started with: \n"+cmdLine);
 
-cmd.on('stderr', (line) => {
-    let segments = line.split(' ');
-    if (segments[0].indexOf('[Parsed_ebur128') == 0) {
-        parseEbuMessage(segments);
-    } else if (segments[0].indexOf('[Parsed_showinfo_1') == 0) {
-        parseSceneChangeMessage(segments);
+            if (state.errored)
+                state.errored = false;
+        }, 1000);
+    },
+    end: function () {
+        console.log('Playback ended, this should never happen. Exiting.');
+        warnings.slackMessage("Playback ended, this should never happen. Exiting.", function () {
+            process.exit(-1);
+        });
+    },
+    error: function (err) {
+        if (state.errored) {
+            state.errorTime = new Date();
+
+            setTimeout(() => {
+                ffmpeg = new FfmpegInstance(ffmpegConfig);
+            }, 60*1000);
+        } else {
+            console.log('error, will retry every 60s: ', err);
+            state.errored = true;
+            state.errorTime = new Date();
+
+            warnings.slackMessage("Stream errored, retrying every 60s...", function () {
+                setTimeout(() => {
+                    ffmpeg = new FfmpegInstance(ffmpegConfig);
+                }, 60*1000);
+            });
+        }
+    },
+    stderr: function (line) {
+        let segments = line.split(' ');
+        if (segments[0].indexOf('[Parsed_ebur128') == 0) {
+            parseEbuMessage(segments);
+        } else if (segments[0].indexOf('[Parsed_showinfo_1') == 0) {
+            parseSceneChangeMessage(segments);
+        }
     }
-});
+}
 
-cmd.run();
+let ffmpeg = new FfmpegInstance(ffmpegConfig);
 
 /**
  * Parses messages with segments of ebu ffmpeg info and passes these to a handler.
@@ -56,6 +75,8 @@ cmd.run();
 function parseEbuMessage(segments) {
     let data = [];
     let object = {};
+
+    console.log('works');
 
     if (state.connected == 0) {
         state.connected = new Date();
@@ -149,41 +170,17 @@ function parseSceneChangeMessage(segments) {
 function resetSilenceWarning() {
     state.silenceWarningSent = false;
 
-    slack.webhook({
-        channel: "#techniek",
-        username: "Stream Watcher",
-        text: "Audio resumed on RTV Slogo at "+new Date().toLocaleTimeString()
-    }, function () {
-          //
-    });
-
-    emailServer.send({
-        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+new Date().toLocaleTimeString()+" herstart met het uitzenden van geluid.", 
-        from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
-        to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
-        bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
-        subject: "[STREAM MONITOR] Opheffing stilte alarm voor RTV Slogo"
-    }, function(err, message) { console.log(err || message); });
+    warnings.slackMessage("Audio resumed on RTV Slogo at "+new Date().toLocaleTimeString());
+    warnings.emailMessage(" Opheffing stilte alarm voor RTV Slogo", 
+        "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+new Date().toLocaleTimeString()+" herstart met het uitzenden van geluid.");
 }
 
 function resetStaticImageWarning() {
     state.staticImageWarningSent = false;
 
-    slack.webhook({
-        channel: "#techniek",
-        username: "Stream Watcher",
-        text: "Video resumed on RTV Slogo at "+new Date().toLocaleTimeString()
-    }, function () {
-          //
-    });
-
-    emailServer.send({
-        text:    "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+new Date().toLocaleTimeString()+" herstart met het uitzenden van beeld.", 
-        from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
-        to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
-        bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
-        subject: "[STREAM MONITOR] Statisch beeld alarm voor RTV Slogo"
-    }, function(err, message) { console.log(err || message); });
+    warnings.slackMessage("Video resumed on RTV Slogo at "+new Date().toLocaleTimeString());
+    warnings.emailMessage("Statisch beeld alarm voor RTV Slogo",
+        "Dit is een automatisch bericht van de stream monitor app.\n Het kanaal RTV Slogo is om "+new Date().toLocaleTimeString()+" herstart met het uitzenden van beeld.");
 }
 
 /**
@@ -248,7 +245,7 @@ function calculateMotion() {
 
 // run checks every second
 setInterval(function () {
-    if (!state.connected)
+    if (!state.connected || state.errored)
         return;
 
     calculateMotion();
@@ -256,21 +253,9 @@ setInterval(function () {
     if (!state.silenceWarningSent && new Date() - state.lastAudioFrame > config.audioTimeout*1000) { // silence for 30 seconds
         state.silenceWarningSent = true;
  
-        slack.webhook({
-          channel: "#techniek",
-          username: "Stream Watcher",
-          text: "No audio on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString()
-        }, function () {
-            //
-        });
-
-        emailServer.send({
-            text:    "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo is sinds "+state.lastAudioFrame.toLocaleTimeString()+" stil geweest. \n\nU ontvangt hiervan geen melding meer totdat het geluid wordt hervat.", 
-            from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
-            to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
-            bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
-            subject: "[STREAM MONITOR] Stilte alarm voor RTV Slogo!"
-         }, function(err, message) { console.log(err || message); });
+        warnings.slackMessage("No audio on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString());
+        warnings.emailMessage("Stilte alarm voor RTV Slogo!",
+            "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo is sinds "+state.lastAudioFrame.toLocaleTimeString()+" stil geweest. \n\nU ontvangt hiervan geen melding meer totdat het geluid wordt hervat.")
 
         console.log('Silence Warning!')
     }
@@ -278,22 +263,10 @@ setInterval(function () {
     if (!state.staticImageWarningSent && new Date() - state.lastVideoFrame > config.videoTimeout*1000) { // static image for 30 seconds
         state.staticImageWarningSent = true;
 
-        slack.webhook({
-            channel: "#techniek",
-            username: "Stream Watcher",
-            text: "Static Image has been detected on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString()
-        }, function () {
-            //
-        });
-        
-        emailServer.send({
-            text:    "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo heeft sinds "+state.lastVideoFrame.toLocaleTimeString()+" geen verandering van beeld gehad. \n\nU ontvangt hiervan geen melding meer totdat het beeld wordt hervat.", 
-            from:    "Balte de Wit <balte.de.wit@rtvslogo.nl>", 
-            to:      "Balte de Wit <balte.de.wit@rtvslogo.nl>",
-            bcc:     "Balte de Wit <contact@balte.nl>, Jeroen Kik <email@jeroenkik.nl>, Emile Koole <emilekoole@gmail.com>",
-            subject: "[STREAM MONITOR] Statisch beeld alarm voor RTV Slogo!"
-         }, function(err, message) { console.log(err || message); });
-
-        console.log('Static Image Warning!')
+        warnings.slackMessage("Static Image has been detected on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString());
+        warnings.emailMessage("Statisch beeld alarm voor RTV Slogo!",
+        "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo heeft sinds "+state.lastVideoFrame.toLocaleTimeString()+" geen verandering van beeld gehad. \n\nU ontvangt hiervan geen melding meer totdat het geluid wordt hervat.")
+ 
+         console.log('Static Image Warning!')
     }
 }, 1000)
