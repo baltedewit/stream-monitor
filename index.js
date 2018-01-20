@@ -76,8 +76,6 @@ function parseEbuMessage(segments) {
     let data = [];
     let object = {};
 
-    console.log('works');
-
     if (state.connected == 0) {
         state.connected = new Date();
         console.log('Connected!');
