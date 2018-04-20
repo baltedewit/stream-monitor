@@ -16,8 +16,8 @@ const emailServer = email.server.connect({
 
 warnings.slackMessage = function (message, cb) {
     slack.webhook({
-        channel: "#techniek",
-        username: "Stream Watcher",
+        channel: config.slackChannel,
+        username: config.slackName || "Stream Watcher",
         text: os.hostname+": "+message
     }, function () {
         if (cb && typeof cb == "function") {

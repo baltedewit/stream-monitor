@@ -3,10 +3,13 @@
     "password": "[PASSWORD]",
     "host": "[MAIL SERVER]",
     "webhook": "https://hooks.slack.com/services/YOUR/KEYS",
+    "slackChannel": "#monitoring",
+    "slackName": "Stream Watcher",
     
     "stream": "[VALID FFMPEG INPUT]",
     "mappings": ["-map 0:0", "-map 0:1"],
     "dBFS": -70,
     "audioTimeout": 30,
-    "videoTimeout": 30
+    "videoTimeout": 30,
+    "recipients": "Balte de Wit <contact@balte.nl>"
 }
