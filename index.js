@@ -1,6 +1,9 @@
 const config = require('./config.json');
 const warnings = require('./warnings.js');
 const FfmpegInstance = require('./ffmpeg.js');
+const logger = require('./logger.js');
+const { exec } = require('child_process')
+const fs = require('fs')
 
 const state = {
     lastAudioFrame: new Date(),
@@ -209,6 +212,19 @@ function handleEbuMessage(object) {
         }
         state.lastAudioFrame = new Date();
     }
+
+    if (config.loudnessLogs === true) {
+        const checks = ['time', 'momentary', 'short', 'integrated', 'LRA', 'frameTPK', 'TPK']
+        for (const key of checks) {
+            if (typeof object[key] === 'undefined') {
+                return
+            }
+        }
+        let csvObj = {...object}
+        csvObj.frameTPK = object.frameTPK[0]
+        csvObj.TPK = object.TPK[0]
+        logger(csvObj)
+    }
 }
 
 /**
@@ -266,5 +282,15 @@ setInterval(function () {
         "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo heeft sinds "+state.lastVideoFrame.toLocaleTimeString()+" geen verandering van beeld gehad. \n\nU ontvangt hiervan geen melding meer totdat het geluid wordt hervat.")
  
          console.log('Static Image Warning!')
+    }
+
+    if (new Date().toLocaleTimeString() === '23:59:59') { // generate loudness report
+        let date = new Date().toLocaleDateString()
+        exec('node ./report.js ' + date).once('close', () => {
+            warnings.sendReport(date, () => {
+                fs.unlinkSync(`./logs/${date}.csv`)
+                process.kill(0)
+            })
+        })
     }
 }, 1000)
