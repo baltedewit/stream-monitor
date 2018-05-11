@@ -14,5 +14,7 @@
     "recipients": "Balte de Wit <contact@balte.nl>",
 
     "loudnessLogs": true,
-    "reportRecipients": "Balte de Wit <contact@balte.nl>"
+    "reportRecipients": "Balte de Wit <contact@balte.nl>",
+    "reportRsync": "/path/to/dir",
+    "logdataURI": "https://example.com/"
 }

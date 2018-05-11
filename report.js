@@ -41,12 +41,12 @@ function generateChart(data, name) {
 	var chart = anychart.line(data);
 	chart.bounds(0, 0, 800, 600);
 	chart.container('container');
-	chart.title(name)
+	chart.title(`${name} ${date}`)
 	chart.draw();
 
 	// generate JPG image and save it to a file
-	anychartExport.exportTo(chart, 'svg').then(function(image) {
-	fs.writeFile(`./generated/${name}.svg`, image, function(fsWriteError) {
+	anychartExport.exportTo(chart, 'png').then(function(image) {
+	fs.writeFile(`./generated/${date}_${name}.png`, image, function(fsWriteError) {
 		if (fsWriteError) {
 			console.log(fsWriteError);
 		} else {

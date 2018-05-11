@@ -281,15 +281,22 @@ setInterval(function () {
         warnings.emailMessage("Statisch beeld alarm voor RTV Slogo!",
         "Dit is een automatische waarschuwing van de stream monitor app.\n Het kanaal RTV Slogo heeft sinds "+state.lastVideoFrame.toLocaleTimeString()+" geen verandering van beeld gehad. \n\nU ontvangt hiervan geen melding meer totdat het geluid wordt hervat.")
  
-         console.log('Static Image Warning!')
+        console.log('Static Image Warning!')
     }
 
-    if (new Date().toLocaleTimeString() === '23:59:59') { // generate loudness report
+    if (config.loudnessLogs && new Date().toLocaleTimeString() === '23:59:59') { // generate loudness report
         let date = new Date().toLocaleDateString()
+        warnings.slackMessage('Generating loudness report...')
         exec('node ./report.js ' + date).once('close', () => {
+            if (config.loudnessRsync) {
+                exec(`rsync -av ./logs ${config.loudnessRsync}`)
+                exec(`rsync -av ./generated ${config.loudnessRsync}`)
+            }
             warnings.sendReport(date, () => {
                 fs.unlinkSync(`./logs/${date}.csv`)
-                process.kill(0)
+                fs.unlinkSync(`./generated/${date}_integrated.png`)
+                fs.unlinkSync(`./generated/${date}_momentary.png`)
+                warnings.slackMessage('Generated loudness report.')
             })
         })
     }
