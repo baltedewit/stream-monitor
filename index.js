@@ -263,7 +263,7 @@ async function generateLogs() {
     if (config.loudnessRsync) {
         await exec(`rsync -av ./logs ${config.loudnessRsync}`)
     }
-    await exec('node ./report.js ' + date).on('stderr', console.log)
+    await exec('node ./report.js ' + date).then(console.log).catch((err) => warnings.slackMessage(JSON.stringify(err)))
     if (config.loudnessRsync) {
         await exec(`rsync -av ./generated ${config.loudnessRsync}`)
     }
