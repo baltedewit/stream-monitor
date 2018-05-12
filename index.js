@@ -257,6 +257,24 @@ function calculateMotion() {
         state.lastVideoFrame = new Date();
 }
 
+async function generateLogs() {
+    let date = new Date(Date.now() - 3600000).toLocaleDateString() // date from 1 hr ago
+    warnings.slackMessage('Generating loudness report...')
+    if (config.loudnessRsync) {
+        await exec(`rsync -av ./logs ${config.loudnessRsync}`)
+    }
+    await exec('node ./report.js ' + date)
+    if (config.loudnessRsync) {
+        await exec(`rsync -av ./generated ${config.loudnessRsync}`)
+    }
+    warnings.sendReport(date, () => {
+        fs.unlinkSync(`./logs/${date}.csv`)
+        fs.unlinkSync(`./generated/${date}_integrated.png`)
+        fs.unlinkSync(`./generated/${date}_momentary.png`)
+        warnings.slackMessage('Generated loudness report.')
+    })
+}
+
 // run checks every second
 setInterval(function () {
     if (!state.connected || state.errored)
@@ -285,19 +303,6 @@ setInterval(function () {
     }
 
     if (config.loudnessLogs && new Date().toLocaleTimeString() === '23:59:59') { // generate loudness report
-        let date = new Date().toLocaleDateString()
-        warnings.slackMessage('Generating loudness report...')
-        exec('node ./report.js ' + date).once('close', () => {
-            if (config.loudnessRsync) {
-                exec(`rsync -av ./logs ${config.loudnessRsync}`)
-                exec(`rsync -av ./generated ${config.loudnessRsync}`)
-            }
-            warnings.sendReport(date, () => {
-                fs.unlinkSync(`./logs/${date}.csv`)
-                fs.unlinkSync(`./generated/${date}_integrated.png`)
-                fs.unlinkSync(`./generated/${date}_momentary.png`)
-                warnings.slackMessage('Generated loudness report.')
-            })
-        })
+        generateLogs()
     }
 }, 1000)
