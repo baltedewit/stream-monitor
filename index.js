@@ -2,8 +2,8 @@ const config = require('./config.json');
 const warnings = require('./warnings.js');
 const FfmpegInstance = require('./ffmpeg.js');
 const logger = require('./logger.js');
-const { exec } = require('child_process')
 const fs = require('fs')
+const exec = require('await-exec')
 
 const state = {
     lastAudioFrame: new Date(),
@@ -263,14 +263,14 @@ async function generateLogs() {
     if (config.loudnessRsync) {
         await exec(`rsync -av ./logs ${config.loudnessRsync}`)
     }
-    await exec('node ./report.js ' + date)
+    await exec('node ./report.js ' + date).on('stderr', console.log)
     if (config.loudnessRsync) {
         await exec(`rsync -av ./generated ${config.loudnessRsync}`)
     }
     warnings.sendReport(date, () => {
         fs.unlinkSync(`./logs/${date}.csv`)
-        fs.unlinkSync(`./generated/${date}_integrated.png`)
-        fs.unlinkSync(`./generated/${date}_momentary.png`)
+        fs.unlinkSync(`./generated/${date}_integrated.svg`)
+        fs.unlinkSync(`./generated/${date}_momentary.svg`)
         warnings.slackMessage('Generated loudness report.')
     })
 }

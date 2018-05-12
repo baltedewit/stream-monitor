@@ -47,8 +47,8 @@ function generateChart(data, name) {
 	chart.draw();
 
 	// generate JPG image and save it to a file
-	anychartExport.exportTo(chart, 'png').then(function(image) {
-	fs.writeFile(`./generated/${date}_${name}.png`, image, function(fsWriteError) {
+	anychartExport.exportTo(chart, 'svg').then(function(image) {
+	fs.writeFile(`./generated/${date}_${name}.svg`, image, function(fsWriteError) {
 		if (fsWriteError) {
 			console.log(fsWriteError);
 		} else {

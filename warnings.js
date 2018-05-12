@@ -51,8 +51,8 @@ warnings.sendReport = function (date, cb) {
         subject: "[STREAM MONITOR] Daily loudness report",
         attachment:
         [
-            { path:`./generated/${date}_integrated.png`, type: "image/png", name: `${date}_integrated.png`, inline: false },
-            { path:`./generated/${date}_momentary.png`, type: "image/png", name: `${date}_momentary.png`, inline: false }
+            { path:`./generated/${date}_integrated.svg`, type: "image/svg", name: `${date}_integrated.svg`, inline: false },
+            { path:`./generated/${date}_momentary.svg`, type: "image/svg", name: `${date}_momentary.svg`, inline: false }
         ]
     }, function(err, message) { console.log(err || message); if (cb) cb(); });
 }
