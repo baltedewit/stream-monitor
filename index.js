@@ -16,6 +16,7 @@ const state = {
 }
 
 const frameHistory = [];
+const measurementIndex = 0
 
 const ffmpegConfig = {
     stream: config.stream,
@@ -213,7 +214,9 @@ function handleEbuMessage(object) {
         state.lastAudioFrame = new Date();
     }
 
-    if (config.loudnessLogs === true) {
+    measurementIndex++
+    if (config.loudnessLogs === true && measurementIndex === 10) {
+        measurementIndex = 0
         const checks = ['time', 'momentary', 'short', 'integrated', 'LRA', 'frameTPK', 'TPK']
         for (const key of checks) {
             if (typeof object[key] === 'undefined') {
@@ -279,10 +282,12 @@ async function generateLogs() {
 setInterval(function () {
     if (!state.connected || state.errored)
         return;
+    
+    const d = new Date()
 
     calculateMotion();
 
-    if (!state.silenceWarningSent && new Date() - state.lastAudioFrame > config.audioTimeout*1000) { // silence for 30 seconds
+    if (!state.silenceWarningSent && d - state.lastAudioFrame > config.audioTimeout*1000) { // silence for 30 seconds
         state.silenceWarningSent = true;
  
         warnings.slackMessage("No audio on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString());
@@ -292,7 +297,7 @@ setInterval(function () {
         console.log('Silence Warning!')
     }
 
-    if (!state.staticImageWarningSent && new Date() - state.lastVideoFrame > config.videoTimeout*1000) { // static image for 30 seconds
+    if (!state.staticImageWarningSent && d - state.lastVideoFrame > config.videoTimeout*1000) { // static image for 30 seconds
         state.staticImageWarningSent = true;
 
         warnings.slackMessage("Static Image has been detected on RTV Slogo Stream since "+state.lastAudioFrame.toLocaleTimeString());
@@ -302,7 +307,9 @@ setInterval(function () {
         console.log('Static Image Warning!')
     }
 
-    if (config.loudnessLogs && new Date().toLocaleTimeString() === '23:59:59') { // generate loudness report
+    if (config.loudnessLogs && d.toLocaleTimeString() === '23:59:59') { // generate loudness report
         generateLogs()
+    } else if (d.toLocaleTimeString() === '00:00:00') {
+        ffmpeg = new FfmpegInstance(ffmpegConfig)
     }
 }, 1000)

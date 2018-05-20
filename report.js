@@ -12,18 +12,20 @@ var window = jsdom.window;
 // read and parse csv
 var parse = require('csv-parse')
 
-var parser = parse({delimiter: ',', columns: true, auto_parse: true}, function(err, data){
+var parser = parse({delimiter: ',', columns: true, auto_parse: true}, async function(err, data){
+	let short = []
 	let integrated = []
+	for (let i = 0; i < data.length; i += 1) {
+		// integrated.push([ row.datetime.split(' ')[1], row.integrated ])
+		short.push(data[i].short)
+	}
+	await generateChart(short, 'short')
+
 	for (const row of data) {
-		integrated.push([ row.datetime.split(' ')[1], row.integrated ])
+		// integrated.push([ row.datetime.split(' ')[1], row.integrated ])
+		integrated.push(row.integrated)
 	}
 	generateChart(integrated, 'integrated')
-
-	let momentary = []
-	for (const row of data) {
-		momentary.push([ row.datetime.split(' ')[1], row.momentary ])
-	}
-	generateChart(momentary, 'momentary')
 });
 
 // figure out the date:
@@ -33,29 +35,33 @@ console.log('Parse CSV: '+date)
 fs.createReadStream(`../stream-monitor/logs/${date}.csv`).pipe(parser);
 
 function generateChart(data, name) {
-	console.log('Generate Chart: '+name)
-	// require anychart and anychart export modules
-	var anychart = require('anychart')(window);
-	var anychartExport = require('anychart-nodejs')(anychart);
+	return new Promise((resolve) => {
+		console.log('Generate Chart: '+name)
+		// require anychart and anychart export modules
+		var anychart = require('anychart')(window);
+		var anychartExport = require('anychart-nodejs')(anychart);
 
-	// create and a chart to the jsdom window.
-	// chart creating should be called only right after anychart-nodejs module requiring
-	var chart = anychart.line(data)
-	chart.bounds(0, 0, 1600, 600);
-	chart.container('container');
-	chart.title(`${name} ${date}`)
-	chart.draw();
+		// create and a chart to the jsdom window.
+		// chart creating should be called only right after anychart-nodejs module requiring
+		var chart = anychart.line(data)
+		chart.bounds(0, 0, 1600, 600);
+		chart.container('container');
+		chart.title(`${name} ${date}`)
+		chart.draw();
 
-	// generate JPG image and save it to a file
-	anychartExport.exportTo(chart, 'svg').then(function(image) {
-	fs.writeFile(`./generated/${date}_${name}.svg`, image, function(fsWriteError) {
-		if (fsWriteError) {
-			console.log(fsWriteError);
-		} else {
-			console.log('Complete');
-		}
-	});
-	}, function(generationError) {
-		console.log(generationError);
-	});
+		// generate JPG image and save it to a file
+		anychartExport.exportTo(chart, 'svg').then(function(image) {
+		fs.writeFile(`./generated/${date}_${name}.svg`, image, function(fsWriteError) {
+			if (fsWriteError) {
+				console.log(fsWriteError);
+			} else {
+				console.log('Complete');
+			}
+			resolve()
+		});
+		}, function(generationError) {
+			console.log(generationError);
+			resolve()
+		});
+	})
 }
