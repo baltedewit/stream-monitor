@@ -16,7 +16,7 @@ const state = {
 }
 
 const frameHistory = [];
-const measurementIndex = 0
+let measurementIndex = 0
 
 const ffmpegConfig = {
     stream: config.stream,
