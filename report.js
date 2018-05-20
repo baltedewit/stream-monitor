@@ -15,16 +15,11 @@ var parse = require('csv-parse')
 var parser = parse({delimiter: ',', columns: true, auto_parse: true}, async function(err, data){
 	let short = []
 	let integrated = []
-	for (let i = 0; i < data.length; i += 1) {
-		// integrated.push([ row.datetime.split(' ')[1], row.integrated ])
-		short.push(data[i].short)
+	for (const row of data) {
+		short.push([row.datetime.split(' ')[1], row.short])
+		integrated.push([row.datetime.split(' ')[1], row.integrated])
 	}
 	await generateChart(short, 'short')
-
-	for (const row of data) {
-		// integrated.push([ row.datetime.split(' ')[1], row.integrated ])
-		integrated.push(row.integrated)
-	}
 	generateChart(integrated, 'integrated')
 });
 
